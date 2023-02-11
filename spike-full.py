@@ -2,6 +2,7 @@
 import os
 import configparser
 import logging
+import concurrent.futures
 from pymongo import MongoClient
 
 try:
@@ -138,12 +139,14 @@ def update_marker(parameters, _last_indicator_marker):
     parameters['filter'] = "_marker:>'" + _last_indicator_marker + "'"
     return parameters
 
+def worker(indicator):
+    log.info(f'writing append indicator: {indicator["id"]}')
+    my_collection.insert_one(indicator)
+
 VERSION = "0.0.1-spike"
 APPLICATION_NAME = "falcon-intel-indicators-to-mongodb"
 
 if __name__ == "__main__":
-
-
 
     config = AppConfig()
     config.validate()
@@ -176,9 +179,15 @@ if __name__ == "__main__":
     while fetch:
         indicators_response = api._resources(action='QueryIntelIndicatorEntities', parameters=parameters)
         if len(indicators_response) > 0:
-            for x in iter(indicators_response):
-                log.info(f'writing append indicator: {x["id"]}')
-                my_collection.insert_one(x)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # Schedule the worker function to be executed for each indicator
+                future_to_indicator = {executor.submit(worker, indicator): indicator for indicator in indicators_response}
+                for future in concurrent.futures.as_completed(future_to_indicator):
+                    indicator = future_to_indicator[future]
+                    try:
+                        future.result()
+                    except Exception as e:
+                        log.error(f'Error processing indicator: {indicator["id"]}, error: {e}')
         else:
             fetch = False
         _last_indicator = indicators_response[-1]
