@@ -1,4 +1,4 @@
-#import code  # troubleshooting only
+# import code  # troubleshooting only
 import os
 import configparser
 import logging
@@ -13,21 +13,23 @@ except ImportError as no_falconpy:
         "Install this application with the command `python3 -m pip install crowdstrike-falconpy`."
     ) from no_falconpy
 
+
 class AppConfig(configparser.ConfigParser):
-    
+
     FALCON_CLOUD_REGIONS = {'us-1', 'us-2', 'eu-1', 'us-gov-1'}
     ENV_DEFAULTS = [
         ['falcon', 'cloud_region', 'FALCON_CLOUD_REGION'],
         ['falcon', 'client_id', 'FALCON_CLIENT_ID'],
         ['falcon', 'client_secret', 'FALCON_CLIENT_SECRET'],
-        ['mongodb', 'connectionstring'. 'MONGO_CONNECTIONSTRING']
-        ['mongodb', 'database'. 'MONGO_DATABASE']
-        ['mongodb', 'collection'. 'MONGO_COLLECTION']
+        ['mongodb', 'connectionstring', 'MONGO_CONNECTIONSTRING']
+        ['mongodb', 'database', 'MONGO_DATABASE']
+        ['mongodb', 'collection', 'MONGO_COLLECTION']
     ]
 
     def __init__(self):
         super().__init__()
-        self.read(['config.ini', 'config/defaults.ini', 'config/config.ini', 'config/devel.ini'])
+        self.read(['config.ini', 'config/defaults.ini',
+                  'config/config.ini', 'config/devel.ini'])
         self._override_from_env()
 
     def _override_from_env(self):
@@ -46,17 +48,18 @@ class AppConfig(configparser.ConfigParser):
                         envvar, section, var)) from err
         self.validate_falcon()
 
-
     def validate_falcon(self):
         if int(self.get('main', 'max_threads')) not in range(1, 100):
-            raise Exception('Malformed configuration: expected max_threads to be in range 0-100')
+            raise Exception(
+                'Malformed configuration: expected max_threads to be in range 0-100')
         if int(self.get('falcon', 'reconnect_retry_count')) not in range(1, 10000):
-            raise Exception('Malformed configuration: expected falcon.reconnect_retry_count to be in range 0-10000')
+            raise Exception(
+                'Malformed configuration: expected falcon.reconnect_retry_count to be in range 0-10000')
         if self.get('falcon', 'cloud_region') not in self.FALCON_CLOUD_REGIONS:
             raise Exception(
-                'Malformed configuration: expected falcon.cloud_region to be in {}'.format(self.FALCON_CLOUD_REGIONS)
+                'Malformed configuration: expected falcon.cloud_region to be in {}'.format(
+                    self.FALCON_CLOUD_REGIONS)
             )
-
 
     @property
     def indicators(self):
@@ -104,12 +107,15 @@ class FalconAPI():
     def _mycommand(self, *args, **kwargs):
         response = self.client.command(*args, **kwargs)
         body = response['body']
-        log.info('Connection to Falcon OAUTH2 REST API resulted with status code: ' + str(response['status_code']))
+        log.info('Connection to Falcon OAUTH2 REST API resulted with status code: ' +
+                 str(response['status_code']))
 
         if 'errors' in body and body['errors'] is not None and len(body['errors']) > 0:
-            raise ApiError(f"Error received from CrowdStrike Falcon platform: {body['errors']}")
+            raise ApiError(
+                f"Error received from CrowdStrike Falcon platform: {body['errors']}")
         if 'status_code' not in response or response['status_code'] not in [200, 201]:
-            raise ApiError(f'Unexpected response code from Falcon API. Response was: {response}')
+            raise ApiError(
+                f'Unexpected response code from Falcon API. Response was: {response}')
         if 'Next-Page' in response['headers'] and len(response['headers']['Next-Page']) > 0:
             log.info('Pagination is required')
             self.pagination = True
@@ -129,7 +135,8 @@ def get_current_marker(parameters):
         if len(tracker) == 0:
             log.info('Marker file is empty')
         else:
-            log.info(f'This is last marker collected per the tracker: {tracker[-1]}')
+            log.info(
+                f'This is last marker collected per the tracker: {tracker[-1]}')
             parameters['filter'] = "_marker:>'" + tracker[-1] + "'"
     return parameters
 
@@ -141,9 +148,11 @@ def update_marker(parameters, _last_indicator_marker):
     parameters['filter'] = "_marker:>'" + _last_indicator_marker + "'"
     return parameters
 
+
 def worker(indicator):
     log.debug(f'writing append indicator: {indicator["id"]}')
     my_collection.insert_one(indicator)
+
 
 VERSION = "0.0.1-spike"
 APPLICATION_NAME = "falcon-intel-indicators-to-mongodb"
@@ -161,7 +170,8 @@ if __name__ == "__main__":
     log.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    formatter = logging.Formatter(f'%(asctime)s %(name)s %(threadName)-10s %(levelname)-5s - {VERSION} v{APPLICATION_NAME}: %(message)s', '%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter(
+        f'%(asctime)s %(name)s %(threadName)-10s %(levelname)-5s - {VERSION} v{APPLICATION_NAME}: %(message)s', '%Y-%m-%d %H:%M:%S')
     ch.setFormatter(formatter)
     log.addHandler(ch)
 
@@ -171,7 +181,7 @@ if __name__ == "__main__":
 
     # Interact with Code if Troubleshooting Mongo Connection Strings
     # code.interact(local=dict(globals(), **locals()))
-    
+
     client = MongoClient(config['mongodb']['connectionstring'])
     my_database = client[config['mongodb']['database']]
     my_collection = my_database[config['mongodb']['collection']]
@@ -181,7 +191,8 @@ if __name__ == "__main__":
     fetch = True
 
     while fetch:
-        indicators_response = api._resources(action='QueryIntelIndicatorEntities', parameters=parameters)
+        indicators_response = api._resources(
+            action='QueryIntelIndicatorEntities', parameters=parameters)
         if len(indicators_response) > 0:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
                 executor.map(worker, indicators_response)
