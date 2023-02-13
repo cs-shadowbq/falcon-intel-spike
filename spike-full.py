@@ -104,7 +104,7 @@ class FalconAPI():
     def _mycommand(self, *args, **kwargs):
         response = self.client.command(*args, **kwargs)
         body = response['body']
-        log.info('Connection to Intel API resulted with status code: ' + str(response['status_code']))
+        log.info('Connection to Falcon OAUTH2 REST API resulted with status code: ' + str(response['status_code']))
 
         if 'errors' in body and body['errors'] is not None and len(body['errors']) > 0:
             raise ApiError(f"Error received from CrowdStrike Falcon platform: {body['errors']}")
