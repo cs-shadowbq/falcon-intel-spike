@@ -48,6 +48,8 @@ class AppConfig(configparser.ConfigParser):
 
 
     def validate_falcon(self):
+        if int(self.get('main', 'max_threads')) not in range(1, 100):
+            raise Exception('Malformed configuration: expected max_threads to be in range 0-100')
         if int(self.get('falcon', 'reconnect_retry_count')) not in range(1, 10000):
             raise Exception('Malformed configuration: expected falcon.reconnect_retry_count to be in range 0-10000')
         if self.get('falcon', 'cloud_region') not in self.FALCON_CLOUD_REGIONS:
@@ -174,20 +176,16 @@ if __name__ == "__main__":
     my_database = client[config['mongodb']['database']]
     my_collection = my_database[config['mongodb']['collection']]
 
+    max_threads = config['main']['max_threads']
+
     fetch = True
 
     while fetch:
         indicators_response = api._resources(action='QueryIntelIndicatorEntities', parameters=parameters)
         if len(indicators_response) > 0:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                # Schedule the worker function to be executed for each indicator
-                future_to_indicator = {executor.submit(worker, indicator): indicator for indicator in indicators_response}
-                for future in concurrent.futures.as_completed(future_to_indicator):
-                    indicator = future_to_indicator[future]
-                    try:
-                        future.result()
-                    except Exception as e:
-                        log.error(f'Error processing indicator: {indicator["id"]}, error: {e}')
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+                executor.map(worker, indicators_response)
+                executor.shutdown(wait=True)
         else:
             fetch = False
         _last_indicator = indicators_response[-1]
