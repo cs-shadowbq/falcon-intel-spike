@@ -8,11 +8,11 @@
 
 [![screenshot](media/working.png)](README.md)
 
-## Note
+## Data Storage Capacity and Size
 
-This is single threaded, and can take days to download the over 200+ Million indicators at 4000 indicators per page.
+This data can take significant time to download the over 200+ Million indicators at 4000 indicators per page, even with threads.
 
-Storage of the solution would take 10s of GB of data and proper indexing on the MongoDB.
+Storage of the solution would use 10s of GB of data and require proper indexing on the MongoDB.
 
 ## Setup
 
