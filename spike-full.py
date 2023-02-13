@@ -142,7 +142,7 @@ def update_marker(parameters, _last_indicator_marker):
     return parameters
 
 def worker(indicator):
-    log.info(f'writing append indicator: {indicator["id"]}')
+    log.debug(f'writing append indicator: {indicator["id"]}')
     my_collection.insert_one(indicator)
 
 VERSION = "0.0.1-spike"
