@@ -1,4 +1,4 @@
-# Falcon Intel Spike
+# Falcon Intel Indicators Spike
 
 > **Warning**
 > 
